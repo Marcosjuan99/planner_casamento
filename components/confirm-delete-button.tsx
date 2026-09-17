@@ -7,7 +7,7 @@ export function ConfirmDeleteButton({
   itemName,
   label = "Excluir",
 }: {
-  action: () => Promise<unknown> | unknown;
+  action: (formData: FormData) => void | Promise<void>;
   itemName: string;
   label?: string;
 }) {

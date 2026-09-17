@@ -13,8 +13,20 @@ function parseMoney(value: FormDataEntryValue | null) {
 }
 
 function toDate(value: FormDataEntryValue | null) {
-  if (!value || String(value).trim() === "") return null;
-  return new Date(String(value));
+  const dateValue = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return null;
+
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
 }
 
 export async function createCategory(formData: FormData) {
