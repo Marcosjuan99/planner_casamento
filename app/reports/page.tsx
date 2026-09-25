@@ -8,7 +8,7 @@ export default async function ReportsPage() {
   const totalEstimated = items.reduce((sum, item) => sum + item.estimatedValue, 0);
   const totalContracted = items.reduce((sum, item) => sum + item.contractedValue, 0);
   const totalPaid = items.reduce((sum, item) => sum + item.payments.reduce((t, payment) => t + payment.amount, 0), 0);
-  const totalInstallments = items.reduce((sum, item) => sum + item.installments.reduce((t, installment) => t + installment.amount, 0), 0);
+  const totalInstallments = items.reduce((sum, item) => sum + item.installments.filter((installment) => installment.status === "Pago").reduce((t, installment) => t + installment.amount, 0), 0);
 
   return (
     <div className="space-y-6">

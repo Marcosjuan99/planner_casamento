@@ -42,8 +42,11 @@ export default async function ItemsPage() {
                 <td className="px-4 py-3"><PriorityBadge priority={item.priority} /></td>
                 <td className="px-4 py-3">{money(item.estimatedValue)}</td>
                 <td className="px-4 py-3 text-slate-600">{item.responsibleConnections[0]?.responsible.name ?? "Sem responsável"}</td>
-                <td className="px-4 py-3 text-right">
-                  <ConfirmDeleteButton action={deleteItem.bind(null, item.id)} itemName={`o item “${item.name}”`} />
+                <td className="whitespace-nowrap px-4 py-3 text-right">
+                  <div className="inline-flex items-center justify-end gap-2">
+                    <Link href={`/items/${item.id}/edit`} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">Editar</Link>
+                    <ConfirmDeleteButton action={deleteItem.bind(null, item.id)} itemName={`o item “${item.name}”`} />
+                  </div>
                 </td>
               </tr>
             ))}

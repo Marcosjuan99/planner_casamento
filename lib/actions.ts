@@ -29,6 +29,16 @@ function toDate(value: FormDataEntryValue | null) {
   return date;
 }
 
+function addMonths(date: Date, months: number) {
+  const result = new Date(date);
+  const day = result.getUTCDate();
+  result.setUTCDate(1);
+  result.setUTCMonth(result.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(day, lastDay));
+  return result;
+}
+
 export async function createCategory(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
@@ -43,6 +53,25 @@ export async function createCategory(formData: FormData) {
   });
 
   revalidatePath("/categories");
+}
+
+export async function updateCategory(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!id || !name) return;
+
+  await prisma.category.update({
+    where: { id },
+    data: {
+      name,
+      description: String(formData.get("description") || "") || null,
+      icon: String(formData.get("icon") || "") || null,
+    },
+  });
+
+  revalidatePath("/categories");
+  revalidatePath("/items");
+  revalidatePath("/dashboard");
 }
 
 export async function createResponsible(formData: FormData) {
@@ -81,6 +110,31 @@ export async function createSupplier(formData: FormData) {
   revalidatePath("/suppliers");
 }
 
+export async function updateSupplier(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!id || !name) return;
+
+  await prisma.supplier.update({
+    where: { id },
+    data: {
+      name,
+      company: String(formData.get("company") || "") || null,
+      phone: String(formData.get("phone") || "") || null,
+      whatsapp: String(formData.get("whatsapp") || "") || null,
+      instagram: String(formData.get("instagram") || "") || null,
+      email: String(formData.get("email") || "") || null,
+      service: String(formData.get("service") || "") || null,
+      notes: String(formData.get("notes") || "") || null,
+      link: String(formData.get("link") || "") || null,
+    },
+  });
+
+  revalidatePath("/suppliers");
+  revalidatePath("/items");
+  revalidatePath("/dashboard");
+}
+
 export async function createItem(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
@@ -93,6 +147,7 @@ export async function createItem(formData: FormData) {
       status: String(formData.get("status") || "Planejando"),
       priority: String(formData.get("priority") || "Média"),
       dueDate: toDate(formData.get("dueDate")),
+      paymentDate: toDate(formData.get("paymentDate")),
       notes: String(formData.get("notes") || "") || null,
       tags: String(formData.get("tags") || "") || null,
       acquisitionType: String(formData.get("acquisitionType") || "Compra"),
@@ -117,8 +172,81 @@ export async function createItem(formData: FormData) {
     });
   }
 
+  const materialNames = formData.getAll("materialName").map((value) => String(value).trim());
+  const materialValues = formData.getAll("materialEstimatedValue");
+  const materials = materialNames.flatMap((materialName, index) => {
+    const estimatedValue = parseMoney(materialValues[index] ?? null);
+    return materialName && estimatedValue > 0 ? [{
+      itemId: item.id,
+      name: materialName,
+      estimatedValue,
+      dueDate: toDate(formData.get("dueDate")),
+      status: "Não comprado",
+    }] : [];
+  });
+  if (formData.get("hasMaterials") === "on" && materials.length) {
+    await prisma.material.createMany({ data: materials });
+  }
+
   revalidatePath("/items");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
   redirect("/items");
+}
+
+export async function updateItem(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!id || !name) return;
+
+  await prisma.item.update({
+    where: { id },
+    data: {
+      name,
+      categoryId: String(formData.get("categoryId") || "") || null,
+      description: String(formData.get("description") || "") || null,
+      status: String(formData.get("status") || "Planejando"),
+      priority: String(formData.get("priority") || "Média"),
+      dueDate: toDate(formData.get("dueDate")),
+      paymentDate: toDate(formData.get("paymentDate")),
+      notes: String(formData.get("notes") || "") || null,
+      tags: String(formData.get("tags") || "") || null,
+      acquisitionType: String(formData.get("acquisitionType") || "Compra"),
+      sourceType: String(formData.get("sourceType") || "") || null,
+      isGift: formData.get("isGift") === "on",
+      estimatedValue: parseMoney(formData.get("estimatedValue")),
+      contractedValue: parseMoney(formData.get("contractedValue")),
+      finalValue: parseMoney(formData.get("finalValue")),
+      amountForCouple: parseMoney(formData.get("amountForCouple")),
+      supplierId: String(formData.get("supplierId") || "") || null,
+    },
+  });
+
+  const responsibleId = String(formData.get("responsibleId") || "");
+  await prisma.itemResponsible.deleteMany({ where: { itemId: id } });
+  if (responsibleId) {
+    await prisma.itemResponsible.create({
+      data: { itemId: id, responsibleId, role: "Responsável principal" },
+    });
+  }
+
+  revalidatePath("/items");
+  revalidatePath(`/items/${id}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  redirect("/items");
+}
+
+export async function updateItemEstimatedValue(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const estimatedValue = parseMoney(formData.get("estimatedValue"));
+  if (!id || estimatedValue <= 0) return;
+
+  await prisma.item.update({ where: { id }, data: { estimatedValue } });
+  revalidatePath(`/items/${id}`);
+  revalidatePath("/items");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
 }
 
 export async function addPayment(formData: FormData) {
@@ -143,25 +271,80 @@ export async function addPayment(formData: FormData) {
 export async function addInstallment(formData: FormData) {
   const itemId = String(formData.get("itemId") || "");
   const amount = parseMoney(formData.get("amount"));
-  if (!itemId || amount <= 0) return;
+  const count = Math.max(1, Number(formData.get("count") || 1));
+  if (!itemId || amount <= 0 || !Number.isInteger(count) || count > 60) return;
 
-  const count = await prisma.installment.count({ where: { itemId } });
+  const existingCount = await prisma.installment.count({ where: { itemId } });
+  const startDate = toDate(formData.get("dueDate"));
+  const status = String(formData.get("status") || "Pendente");
+  const paymentMethod = String(formData.get("paymentMethod") || "") || null;
+  const notes = String(formData.get("notes") || "") || null;
 
-  await prisma.installment.create({
-    data: {
+  await prisma.installment.createMany({
+    data: Array.from({ length: count }, (_, index) => ({
       itemId,
-      number: count + 1,
+      number: existingCount + index + 1,
       amount,
-      dueDate: toDate(formData.get("dueDate")),
-      status: String(formData.get("status") || "Pendente"),
-      paymentMethod: String(formData.get("paymentMethod") || "") || null,
-      notes: String(formData.get("notes") || "") || null,
-    },
+      dueDate: startDate ? addMonths(startDate, index) : null,
+      status,
+      paidDate: status === "Pago" ? new Date() : null,
+      paymentMethod,
+      notes,
+    })),
   });
 
   revalidatePath(`/items/${itemId}`);
   revalidatePath("/payments");
   redirect(`/items/${itemId}`);
+}
+
+export async function updateInstallmentStatus(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const status = String(formData.get("status") || "Pendente");
+  if (!id || !["Pendente", "Pago", "Atrasado", "Cancelado"].includes(status)) return;
+
+  const installment = await prisma.installment.findUnique({ where: { id } });
+  if (!installment) return;
+
+  await prisma.installment.update({
+    where: { id },
+    data: {
+      status,
+      paidDate: status === "Pago" ? new Date() : null,
+    },
+  });
+
+  revalidatePath(`/items/${installment.itemId}`);
+  revalidatePath("/payments");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  redirect(`/items/${installment.itemId}`);
+}
+
+export async function updateInstallment(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const amount = parseMoney(formData.get("amount"));
+  const status = String(formData.get("status") || "Pendente");
+  if (!id || amount <= 0 || !["Pendente", "Pago", "Atrasado", "Cancelado"].includes(status)) return;
+
+  const installment = await prisma.installment.findUnique({ where: { id } });
+  if (!installment) return;
+
+  await prisma.installment.update({
+    where: { id },
+    data: {
+      amount,
+      dueDate: toDate(formData.get("dueDate")),
+      status,
+      paidDate: status === "Pago" ? installment.paidDate ?? new Date() : null,
+    },
+  });
+
+  revalidatePath(`/items/${installment.itemId}`);
+  revalidatePath("/payments");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  redirect("/payments");
 }
 
 export async function addTask(formData: FormData) {
@@ -181,6 +364,8 @@ export async function addTask(formData: FormData) {
   });
 
   revalidatePath(`/items/${itemId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
 }
 
 export async function addMaterial(formData: FormData) {
@@ -204,6 +389,26 @@ export async function addMaterial(formData: FormData) {
   });
 
   revalidatePath(`/items/${itemId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+}
+
+export async function updateMaterial(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const estimatedValue = parseMoney(formData.get("estimatedValue"));
+  const actualValue = parseMoney(formData.get("actualValue"));
+  if (!id || estimatedValue < 0 || actualValue < 0) return;
+
+  const material = await prisma.material.findUnique({ where: { id } });
+  if (!material) return;
+
+  await prisma.material.update({
+    where: { id },
+    data: { estimatedValue, actualValue },
+  });
+  revalidatePath(`/items/${material.itemId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
 }
 
 export async function deleteCategory(id: string) {

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { createItem } from "@/lib/actions";
 import { getDashboardData } from "@/lib/queries";
+import { MaterialFields } from "@/components/material-fields";
 
 export default async function NewItemPage() {
   const { categories, responsibles, suppliers } = await getDashboardData();
@@ -81,6 +82,11 @@ export default async function NewItemPage() {
           <input type="date" name="dueDate" className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" />
         </label>
 
+        <label className="space-y-2">
+          <span className="text-sm font-medium text-slate-700">Data provável de pagamento</span>
+          <input type="date" name="paymentDate" className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" />
+        </label>
+
         <label className="space-y-2 md:col-span-2">
           <span className="text-sm font-medium text-slate-700">Descrição</span>
           <textarea name="description" rows={3} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" />
@@ -110,6 +116,8 @@ export default async function NewItemPage() {
           <input type="checkbox" name="isGift" className="h-4 w-4" />
           Esse item é um presente ou ajuda recebida
         </label>
+
+        <MaterialFields />
 
         <button type="submit" className="rounded-full bg-rose-600 px-4 py-2.5 font-medium text-white md:col-span-2">Salvar item</button>
       </form>

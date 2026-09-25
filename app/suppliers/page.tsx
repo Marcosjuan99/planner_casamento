@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/db";
-import { createSupplier, deleteSupplier } from "@/lib/actions";
+import { createSupplier, deleteSupplier, updateSupplier } from "@/lib/actions";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 
 export default async function SuppliersPage() {
@@ -35,7 +35,21 @@ export default async function SuppliersPage() {
               </div>
               <ConfirmDeleteButton action={deleteSupplier.bind(null, supplier.id)} itemName={`o fornecedor “${supplier.name}”`} />
             </div>
-            <p className="mt-3 text-sm text-slate-600">{supplier.email ?? supplier.phone ?? "Contato não informado"}</p>
+            <form action={updateSupplier} className="mt-4 space-y-3">
+              <input type="hidden" name="id" value={supplier.id} />
+              <input name="name" defaultValue={supplier.name} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" required aria-label="Nome do fornecedor" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input name="company" defaultValue={supplier.company ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="Empresa" aria-label="Empresa" />
+                <input name="service" defaultValue={supplier.service ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="Serviço" aria-label="Serviço" />
+                <input name="phone" defaultValue={supplier.phone ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="Telefone" aria-label="Telefone" />
+                <input name="whatsapp" defaultValue={supplier.whatsapp ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="WhatsApp" aria-label="WhatsApp" />
+                <input name="email" type="email" defaultValue={supplier.email ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="E-mail" aria-label="E-mail" />
+                <input name="instagram" defaultValue={supplier.instagram ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="Instagram" aria-label="Instagram" />
+                <input name="link" defaultValue={supplier.link ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5 sm:col-span-2" placeholder="Link" aria-label="Link" />
+              </div>
+              <textarea name="notes" defaultValue={supplier.notes ?? ""} rows={2} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="Observações" aria-label="Observações" />
+              <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">Salvar alterações</button>
+            </form>
           </div>
         ))}
       </div>

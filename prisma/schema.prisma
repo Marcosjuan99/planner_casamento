@@ -55,6 +55,7 @@ model Item {
   status             String            @default("Planejando")
   priority           String            @default("Média")
   dueDate            DateTime?
+  paymentDate        DateTime?
   notes              String?
   tags               String?
   acquisitionType    String            @default("Compra")

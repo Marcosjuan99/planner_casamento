@@ -30,11 +30,18 @@ export function StatusBadge({ status }: { status: string }) {
     Pago: "bg-emerald-100 text-emerald-700",
     Concluído: "bg-rose-100 text-rose-700",
     Cancelado: "bg-red-100 text-red-700",
-    Pendente: "bg-slate-100 text-slate-700",
+    Pendente: "bg-amber-100 text-amber-800",
     Atrasado: "bg-red-100 text-red-700",
   };
 
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${palette[status] ?? "bg-slate-100 text-slate-700"}`}>{status}</span>;
+}
+
+export function InstallmentStatusBadge({ status, isOverdue, isDueSoon }: { status: string; isOverdue: boolean; isDueSoon: boolean }) {
+  const label = isOverdue ? "Atrasada" : status === "Pago" ? "Paga" : isDueSoon ? "Vence em breve" : status;
+  const className = isOverdue || status === "Atrasado" ? "bg-red-100 text-red-700" : status === "Pago" ? "bg-emerald-100 text-emerald-700" : isDueSoon ? "animate-pulse bg-amber-100 text-amber-800" : "bg-amber-50 text-amber-700";
+
+  return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${className}`}><span className="sr-only">Status: </span>{label}</span>;
 }
 
 export function PriorityBadge({ priority }: { priority: string }) {

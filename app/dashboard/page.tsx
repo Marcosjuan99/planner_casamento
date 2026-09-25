@@ -5,9 +5,18 @@ import { getDashboardData } from "@/lib/queries";
 import { DashboardCard, StatusBadge, PriorityBadge } from "@/components/ui";
 import { getDashboardStats, money } from "@/lib/finance";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ startDate?: string; endDate?: string }> }) {
+  const { startDate: startDateParam, endDate: endDateParam } = await searchParams;
   const { items } = await getDashboardData();
-  const stats = getDashboardStats(items);
+  const now = new Date();
+  const defaultStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+  const defaultEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const startDate = startDateParam ? new Date(`${startDateParam}T00:00:00`) : defaultStartDate;
+  const endDate = endDateParam ? new Date(`${endDateParam}T23:59:59.999`) : defaultEndDate;
+  const hasValidPeriod = !Number.isNaN(startDate.getTime()) && !Number.isNaN(endDate.getTime()) && startDate <= endDate;
+  const stats = getDashboardStats(items, hasValidPeriod ? { startDate, endDate } : { startDate: defaultStartDate, endDate: defaultEndDate });
+  const formattedStartDate = startDateParam ?? `${defaultStartDate.getFullYear()}-${String(defaultStartDate.getMonth() + 1).padStart(2, "0")}-01`;
+  const formattedEndDate = endDateParam ?? `${defaultEndDate.getFullYear()}-${String(defaultEndDate.getMonth() + 1).padStart(2, "0")}-${String(defaultEndDate.getDate()).padStart(2, "0")}`;
 
   return (
     <div className="space-y-8">
@@ -22,7 +31,15 @@ export default async function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <DashboardCard title="Orçamento total" value={money(stats.totalEstimated)} detail="Estimada para o casamento" tone="violet" />
         <DashboardCard title="Valor já gasto" value={money(stats.totalPaid)} detail="Pagamentos + parcelas" tone="emerald" />
-        <DashboardCard title="Valor comprometido" value={money(stats.totalCommitted)} detail="Compromissos futuros" tone="amber" />
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 inline-flex rounded-2xl bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-100">Valor comprometido</div>
+          <div className="text-3xl font-semibold text-slate-900">{money(stats.totalCommitted)}</div>
+          <form method="get" className="mt-3 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+            <label className="grid min-w-0 gap-1">Data inicial<input type="date" name="startDate" defaultValue={formattedStartDate} className="min-w-0 w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700" /></label>
+            <label className="grid min-w-0 gap-1">Data final<input type="date" name="endDate" defaultValue={formattedEndDate} className="min-w-0 w-full rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700" /></label>
+            <button type="submit" className="w-full rounded-lg bg-slate-900 px-2 py-1.5 text-xs font-medium text-white sm:col-span-2">Aplicar filtro</button>
+          </form>
+        </div>
         <DashboardCard title="Valor restante" value={money(stats.totalRemaining)} detail="Saldo para pagar" tone="sky" />
       </div>
 

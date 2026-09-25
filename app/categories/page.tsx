@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/db";
-import { createCategory, deleteCategory } from "@/lib/actions";
+import { createCategory, deleteCategory, updateCategory } from "@/lib/actions";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 
 export default async function CategoriesPage() {
@@ -40,7 +40,15 @@ export default async function CategoriesPage() {
               </div>
               <ConfirmDeleteButton action={deleteCategory.bind(null, category.id)} itemName={`a categoria “${category.name}”`} />
             </div>
-            <p className="text-sm text-slate-600">{category.description ?? "Sem descrição"}</p>
+            <form action={updateCategory} className="space-y-3">
+              <input type="hidden" name="id" value={category.id} />
+              <input name="name" defaultValue={category.name} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" required aria-label="Nome da categoria" />
+              <div className="grid gap-3 sm:grid-cols-[5rem_1fr]">
+                <input name="icon" defaultValue={category.icon ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" aria-label="Ícone da categoria" />
+                <input name="description" defaultValue={category.description ?? ""} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="Descrição" aria-label="Descrição da categoria" />
+              </div>
+              <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">Salvar alterações</button>
+            </form>
           </div>
         ))}
       </div>
