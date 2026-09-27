@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { updateItem } from "@/lib/actions";
 import { prisma } from "@/lib/db";
 import { getDashboardData } from "@/lib/queries";
+import { MaterialFields } from "@/components/material-fields";
 
 function dateInputValue(date: Date | null) {
   return date ? new Date(date).toISOString().slice(0, 10) : "";
@@ -19,7 +20,7 @@ export default async function EditItemPage({ params }: { params: Promise<{ id: s
   const [item, referenceData] = await Promise.all([
     prisma.item.findUnique({
       where: { id },
-      include: { responsibleConnections: true },
+      include: { responsibleConnections: true, materials: true },
     }),
     getDashboardData(),
   ]);
@@ -146,6 +147,13 @@ export default async function EditItemPage({ params }: { params: Promise<{ id: s
           <input type="checkbox" name="isGift" defaultChecked={item.isGift} className="h-4 w-4" />
           Esse item é um presente ou ajuda recebida
         </label>
+
+        <MaterialFields initialMaterials={item.materials.map((material) => ({
+          id: material.id,
+          name: material.name,
+          estimatedValue: material.estimatedValue,
+          actualValue: material.actualValue,
+        }))} />
 
         <button type="submit" className="rounded-full bg-rose-600 px-4 py-2.5 font-medium text-white md:col-span-2">Salvar alterações</button>
       </form>

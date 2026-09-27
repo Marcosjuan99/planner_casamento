@@ -5,7 +5,7 @@ import { deleteItem } from "@/lib/actions";
 import { getDashboardData } from "@/lib/queries";
 import { StatusBadge, PriorityBadge } from "@/components/ui";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
-import { money } from "@/lib/finance";
+import { getItemBudgetTotal, money } from "@/lib/finance";
 
 export default async function ItemsPage() {
   const { items } = await getDashboardData();
@@ -40,7 +40,7 @@ export default async function ItemsPage() {
                 </td>
                 <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
                 <td className="px-4 py-3"><PriorityBadge priority={item.priority} /></td>
-                <td className="px-4 py-3">{money(item.estimatedValue)}</td>
+                <td className="px-4 py-3">{money(getItemBudgetTotal(item))}</td>
                 <td className="px-4 py-3 text-slate-600">{item.responsibleConnections[0]?.responsible.name ?? "Sem responsável"}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-right">
                   <div className="inline-flex items-center justify-end gap-2">

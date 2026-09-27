@@ -31,13 +31,22 @@ export function isInstallmentDueSoon(status: string, dueDate: Date | null) {
   return dueTime >= now && dueTime <= fiveDaysFromNow;
 }
 
+export function getMaterialsTotal(materials: Pick<Material, "estimatedValue" | "actualValue">[]) {
+  return materials.reduce((sum, material) => sum + (material.actualValue || material.estimatedValue), 0);
+}
+
+export function getItemBudgetTotal(item: Pick<Item, "estimatedValue"> & { materials: Pick<Material, "estimatedValue" | "actualValue">[] }) {
+  return Math.max(item.estimatedValue, getMaterialsTotal(item.materials));
+}
+
 export function getItemFinancialSummary(item: Item & { payments: Payment[]; installments: Installment[]; materials: Material[] }) {
   const paymentsTotal = item.payments.reduce((sum, payment) => sum + payment.amount, 0);
   const installmentsPaid = item.installments.filter((installment) => installment.status === "Pago").reduce((sum, installment) => sum + installment.amount, 0);
   const installmentsPending = item.installments.filter((installment) => installment.status !== "Pago" && installment.status !== "Cancelado").reduce((sum, installment) => sum + installment.amount, 0);
-  const materialsTotal = item.materials.reduce((sum, material) => sum + (material.actualValue || material.estimatedValue), 0);
+  const materialsTotal = getMaterialsTotal(item.materials);
   const paidTotal = paymentsTotal + installmentsPaid;
-  const remaining = Math.max(item.finalValue || item.contractedValue || item.estimatedValue, 0) - paidTotal;
+  const itemTotal = Math.max(item.finalValue || item.contractedValue || item.estimatedValue, materialsTotal);
+  const remaining = Math.max(itemTotal, 0) - paidTotal;
 
   return {
     paymentsTotal,
@@ -46,7 +55,7 @@ export function getItemFinancialSummary(item: Item & { payments: Payment[]; inst
     materialsTotal,
     paidTotal,
     remaining,
-    percentPaid: percent(paidTotal, Math.max(item.finalValue || item.contractedValue || item.estimatedValue, 1)),
+    percentPaid: percent(paidTotal, Math.max(itemTotal, 1)),
   };
 }
 
@@ -57,7 +66,7 @@ function isWithinPeriod(date: Date | null, startDate: Date, endDate: Date) {
 }
 
 export function getDashboardStats(items: (Item & { payments: Payment[]; installments: Installment[]; materials: Material[]; tasks: Task[] })[], period: { startDate?: Date; endDate?: Date } = {}) {
-  const totalEstimated = items.reduce((sum, item) => sum + item.estimatedValue, 0);
+  const totalEstimated = items.reduce((sum, item) => sum + getItemBudgetTotal(item), 0);
   const totalPaid = items.reduce((sum, item) => sum + getItemFinancialSummary(item).paidTotal, 0);
   const totalRemaining = items.reduce((sum, item) => sum + getItemFinancialSummary(item).remaining, 0);
   const hasPeriod = period.startDate && period.endDate;

@@ -180,6 +180,7 @@ export async function createItem(formData: FormData) {
       itemId: item.id,
       name: materialName,
       estimatedValue,
+      actualValue: parseMoney(formData.getAll("materialActualValue")[index] ?? null),
       dueDate: toDate(formData.get("dueDate")),
       status: "Não comprado",
     }] : [];
@@ -199,36 +200,91 @@ export async function updateItem(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   if (!id || !name) return;
 
-  await prisma.item.update({
-    where: { id },
-    data: {
-      name,
-      categoryId: String(formData.get("categoryId") || "") || null,
-      description: String(formData.get("description") || "") || null,
-      status: String(formData.get("status") || "Planejando"),
-      priority: String(formData.get("priority") || "Média"),
-      dueDate: toDate(formData.get("dueDate")),
-      paymentDate: toDate(formData.get("paymentDate")),
-      notes: String(formData.get("notes") || "") || null,
-      tags: String(formData.get("tags") || "") || null,
-      acquisitionType: String(formData.get("acquisitionType") || "Compra"),
-      sourceType: String(formData.get("sourceType") || "") || null,
-      isGift: formData.get("isGift") === "on",
-      estimatedValue: parseMoney(formData.get("estimatedValue")),
-      contractedValue: parseMoney(formData.get("contractedValue")),
-      finalValue: parseMoney(formData.get("finalValue")),
-      amountForCouple: parseMoney(formData.get("amountForCouple")),
-      supplierId: String(formData.get("supplierId") || "") || null,
-    },
-  });
-
+  const materialIds = formData.getAll("materialId").map((value) => String(value));
+  const materialNames = formData.getAll("materialName").map((value) => String(value).trim());
+  const materialEstimatedValues = formData.getAll("materialEstimatedValue");
+  const materialActualValues = formData.getAll("materialActualValue");
+  const materialRows = materialNames.map((materialName, index) => ({
+    id: materialIds[index] ?? "",
+    name: materialName,
+    estimatedValue: parseMoney(materialEstimatedValues[index] ?? null),
+    actualValue: parseMoney(materialActualValues[index] ?? null),
+  }));
+  const hasMaterials = formData.get("hasMaterials") === "on";
   const responsibleId = String(formData.get("responsibleId") || "");
-  await prisma.itemResponsible.deleteMany({ where: { itemId: id } });
-  if (responsibleId) {
-    await prisma.itemResponsible.create({
-      data: { itemId: id, responsibleId, role: "Responsável principal" },
+
+  await prisma.$transaction(async (transaction) => {
+    await transaction.item.update({
+      where: { id },
+      data: {
+        name,
+        categoryId: String(formData.get("categoryId") || "") || null,
+        description: String(formData.get("description") || "") || null,
+        status: String(formData.get("status") || "Planejando"),
+        priority: String(formData.get("priority") || "Média"),
+        dueDate: toDate(formData.get("dueDate")),
+        paymentDate: toDate(formData.get("paymentDate")),
+        notes: String(formData.get("notes") || "") || null,
+        tags: String(formData.get("tags") || "") || null,
+        acquisitionType: String(formData.get("acquisitionType") || "Compra"),
+        sourceType: String(formData.get("sourceType") || "") || null,
+        isGift: formData.get("isGift") === "on",
+        estimatedValue: parseMoney(formData.get("estimatedValue")),
+        contractedValue: parseMoney(formData.get("contractedValue")),
+        finalValue: parseMoney(formData.get("finalValue")),
+        amountForCouple: parseMoney(formData.get("amountForCouple")),
+        supplierId: String(formData.get("supplierId") || "") || null,
+      },
     });
-  }
+
+    await transaction.itemResponsible.deleteMany({ where: { itemId: id } });
+    if (responsibleId) {
+      await transaction.itemResponsible.create({
+        data: { itemId: id, responsibleId, role: "Responsável principal" },
+      });
+    }
+
+    const existingMaterials = await transaction.material.findMany({
+      where: { itemId: id },
+      select: { id: true },
+    });
+    const existingIds = new Set(existingMaterials.map((material) => material.id));
+    const submittedExistingIds = materialRows.filter((material) => existingIds.has(material.id)).map((material) => material.id);
+    if (hasMaterials) {
+      await transaction.material.deleteMany({
+        where: { itemId: id, id: { notIn: submittedExistingIds } },
+      });
+    } else {
+      await transaction.material.deleteMany({ where: { itemId: id } });
+    }
+
+    if (hasMaterials) {
+      for (const material of materialRows) {
+        if (!material.name) continue;
+        if (existingIds.has(material.id)) {
+          await transaction.material.update({
+            where: { id: material.id },
+            data: {
+              name: material.name,
+              estimatedValue: material.estimatedValue,
+              actualValue: material.actualValue,
+            },
+          });
+        } else {
+          await transaction.material.create({
+            data: {
+              itemId: id,
+              name: material.name,
+              estimatedValue: material.estimatedValue,
+              actualValue: material.actualValue,
+              dueDate: toDate(formData.get("dueDate")),
+              status: "Não comprado",
+            },
+          });
+        }
+      }
+    }
+  });
 
   revalidatePath("/items");
   revalidatePath(`/items/${id}`);
@@ -395,18 +451,32 @@ export async function addMaterial(formData: FormData) {
 
 export async function updateMaterial(formData: FormData) {
   const id = String(formData.get("id") || "");
+  const name = String(formData.get("name") || "").trim();
+  const quantity = Number(formData.get("quantity") || 1);
   const estimatedValue = parseMoney(formData.get("estimatedValue"));
   const actualValue = parseMoney(formData.get("actualValue"));
-  if (!id || estimatedValue < 0 || actualValue < 0) return;
+  const status = String(formData.get("status") || "Não comprado");
+  if (!id || !name || !Number.isFinite(quantity) || quantity <= 0 || estimatedValue < 0 || actualValue < 0) return;
 
   const material = await prisma.material.findUnique({ where: { id } });
   if (!material) return;
 
   await prisma.material.update({
     where: { id },
-    data: { estimatedValue, actualValue },
+    data: {
+      name,
+      quantity,
+      unit: String(formData.get("unit") || "") || null,
+      estimatedValue,
+      actualValue,
+      status,
+      dueDate: toDate(formData.get("dueDate")),
+      whereToBuy: String(formData.get("whereToBuy") || "") || null,
+      notes: String(formData.get("notes") || "") || null,
+    },
   });
   revalidatePath(`/items/${material.itemId}`);
+  revalidatePath("/items");
   revalidatePath("/dashboard");
   revalidatePath("/reports");
 }
@@ -466,6 +536,9 @@ export async function deleteMaterial(id: string) {
 
   await prisma.material.delete({ where: { id } });
   revalidatePath(`/items/${material.itemId}`);
+  revalidatePath("/items");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
 }
 
 export async function deleteTask(id: string) {

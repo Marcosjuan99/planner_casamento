@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { getDashboardData } from "@/lib/queries";
 import { DashboardCard, StatusBadge, PriorityBadge } from "@/components/ui";
-import { getDashboardStats, money } from "@/lib/finance";
+import { getDashboardStats, getItemBudgetTotal, money } from "@/lib/finance";
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ startDate?: string; endDate?: string }> }) {
   const { startDate: startDateParam, endDate: endDateParam } = await searchParams;
@@ -65,7 +65,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </div>
                 <div className="flex items-center gap-2">
                   <PriorityBadge priority={item.priority} />
-                  <span className="text-sm font-medium text-slate-700">{money(item.estimatedValue)}</span>
+                  <span className="text-sm font-medium text-slate-700">{money(getItemBudgetTotal(item))}</span>
                 </div>
               </div>
             ))}

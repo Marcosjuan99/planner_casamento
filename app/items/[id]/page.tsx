@@ -3,9 +3,10 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { isInstallmentDueSoon, isInstallmentOverdue, money } from "@/lib/finance";
-import { addMaterial, updateInstallmentStatus, updateItemEstimatedValue, updateMaterial } from "@/lib/actions";
+import { getMaterialsTotal, isInstallmentDueSoon, isInstallmentOverdue, money } from "@/lib/finance";
+import { addMaterial, deleteMaterial, updateInstallmentStatus, updateMaterial } from "@/lib/actions";
 import { InstallmentStatusBadge } from "@/components/ui";
+import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 
 export default async function ItemDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -25,9 +26,10 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
   if (!item) notFound();
 
   const totalPaid = item.payments.reduce((sum, payment) => sum + payment.amount, 0) + item.installments.filter((installment) => installment.status === "Pago").reduce((sum, installment) => sum + installment.amount, 0);
-  const remaining = Math.max((item.finalValue || item.contractedValue || item.estimatedValue) - totalPaid, 0);
-  const materialsEstimatedTotal = item.materials.reduce((sum, material) => sum + material.estimatedValue, 0);
-  const materialsExceedBudget = materialsEstimatedTotal > item.estimatedValue;
+  const materialsTotal = getMaterialsTotal(item.materials);
+  const totalValue = Math.max(item.finalValue || item.contractedValue || item.estimatedValue, materialsTotal);
+  const remaining = Math.max(totalValue - totalPaid, 0);
+  const materialsExcess = Math.max(materialsTotal - item.estimatedValue, 0);
 
   return (
     <div className="space-y-6">
@@ -42,7 +44,7 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Status</p><p className="mt-2 text-xl font-semibold">{item.status}</p></div>
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Prioridade</p><p className="mt-2 text-xl font-semibold">{item.priority}</p></div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Valor total</p><p className="mt-2 text-xl font-semibold">{money(item.finalValue || item.contractedValue || item.estimatedValue)}</p></div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-sm text-slate-500">Valor total</p><p className="mt-2 text-xl font-semibold">{money(totalValue)}</p></div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -106,15 +108,11 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-xl font-semibold text-slate-900">Materiais</h2>
-            {materialsExceedBudget ? (
+            {materialsExcess > 0 ? (
               <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                 <p className="font-semibold">Os materiais ultrapassaram o valor estimado do item.</p>
-                <p className="mt-1">Materiais: {money(materialsEstimatedTotal)} · Estimado: {money(item.estimatedValue)}</p>
-                <form action={updateItemEstimatedValue} className="mt-3 flex flex-wrap items-end gap-2">
-                  <input type="hidden" name="id" value={item.id} />
-                  <label className="grid gap-1 text-xs font-medium text-red-800">Atualizar valor estimado<input name="estimatedValue" defaultValue={(materialsEstimatedTotal / 100).toFixed(2).replace(".", ",")} className="w-44 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm text-slate-800" /></label>
-                  <button type="submit" className="rounded-xl bg-red-700 px-3 py-2 text-sm font-medium text-white">Atualizar valor</button>
-                </form>
+                <p className="mt-1">Materiais: {money(materialsTotal)} · Estimado: {money(item.estimatedValue)} · Excedente: {money(materialsExcess)}</p>
+                <p className="mt-1 font-medium">O excedente já está incluído no valor total do item.</p>
               </div>
             ) : null}
             <form action={addMaterial} className="mt-4 grid gap-3 rounded-2xl border border-slate-200 p-3 sm:grid-cols-2">
@@ -148,18 +146,37 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
               <button type="submit" className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white sm:col-span-2">Adicionar material</button>
             </form>
             <div className="mt-4 space-y-2">
-              {item.materials.length ? item.materials.map((material) => (
-                <div key={material.id} className="rounded-2xl bg-slate-50 px-3 py-2 text-sm">
-                  <div className="flex items-center justify-between gap-3"><span>{material.name}</span><strong>{money(material.actualValue || material.estimatedValue)}</strong></div>
-                  <div className="mt-1 text-slate-500">{material.status}</div>
-                  <form action={updateMaterial} className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                    <input type="hidden" name="id" value={material.id} />
-                    <label className="grid gap-1 text-xs text-slate-500">Estimado<input name="estimatedValue" defaultValue={(material.estimatedValue / 100).toFixed(2).replace(".", ",")} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
-                    <label className="grid gap-1 text-xs text-slate-500">Real<input name="actualValue" defaultValue={(material.actualValue / 100).toFixed(2).replace(".", ",")} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
-                    <button type="submit" className="rounded-xl bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white">Atualizar</button>
-                  </form>
-                </div>
-              )) : <p className="text-sm text-slate-500">Nenhum material cadastrado.</p>}
+              {item.materials.length ? item.materials.map((material) => {
+                const materialExcess = Math.max(material.actualValue - material.estimatedValue, 0);
+
+                return (
+                  <div key={material.id} className="rounded-2xl bg-slate-50 px-3 py-2 text-sm">
+                    <div className="flex items-center justify-between gap-3"><span>{material.name}</span><strong>{money(material.actualValue || material.estimatedValue)}</strong></div>
+                    <div className="mt-1 text-slate-500">{material.status}</div>
+                    {materialExcess > 0 ? (
+                      <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+                        Este material ultrapassou a estimativa em {money(materialExcess)}. Estimado: {money(material.estimatedValue)} · Real: {money(material.actualValue)}.
+                      </p>
+                    ) : null}
+                    <div className="mt-2 space-y-2">
+                      <form action={updateMaterial} className="grid gap-2 sm:grid-cols-2">
+                        <input type="hidden" name="id" value={material.id} />
+                        <label className="grid gap-1 text-xs text-slate-500">Nome<input name="name" defaultValue={material.name} required className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
+                        <label className="grid gap-1 text-xs text-slate-500">Quantidade<input name="quantity" type="number" min="0.01" step="0.01" defaultValue={material.quantity} required className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
+                        <label className="grid gap-1 text-xs text-slate-500">Unidade<input name="unit" defaultValue={material.unit ?? ""} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
+                        <label className="grid gap-1 text-xs text-slate-500">Estimado<input name="estimatedValue" defaultValue={(material.estimatedValue / 100).toFixed(2).replace(".", ",")} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
+                        <label className="grid gap-1 text-xs text-slate-500">Real<input name="actualValue" defaultValue={(material.actualValue / 100).toFixed(2).replace(".", ",")} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
+                        <label className="grid gap-1 text-xs text-slate-500">Status<select name="status" defaultValue={material.status} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800">{['Não comprado', 'Pesquisando preço', 'Comprado', 'Cancelado'].map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+                        <label className="grid gap-1 text-xs text-slate-500">Data limite<input name="dueDate" type="date" defaultValue={material.dueDate ? new Date(material.dueDate).toISOString().slice(0, 10) : ""} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
+                        <label className="grid gap-1 text-xs text-slate-500">Onde comprar<input name="whereToBuy" defaultValue={material.whereToBuy ?? ""} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
+                        <label className="grid gap-1 text-xs text-slate-500 sm:col-span-2">Observações<textarea name="notes" defaultValue={material.notes ?? ""} rows={2} className="rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800" /></label>
+                        <button type="submit" className="rounded-xl bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white">Salvar material</button>
+                      </form>
+                      <ConfirmDeleteButton action={deleteMaterial.bind(null, material.id)} itemName={`o material “${material.name}”`} />
+                    </div>
+                  </div>
+                );
+              }) : <p className="text-sm text-slate-500">Nenhum material cadastrado.</p>}
             </div>
           </div>
         </div>
