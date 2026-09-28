@@ -10,7 +10,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:generate:local": "prisma generate --schema=prisma/schema.prisma",
     "db:generate:vercel": "prisma generate --schema=prisma/schema.vercel.prisma",
-    "db:export:sqlite": "npm run db:generate:local && tsx prisma/export-sqlite.ts",
+    "db:export:sqlite": "tsx prisma/export-sqlite.ts",
     "db:import:sqlite": "npm run db:generate:vercel && tsx prisma/import-sqlite-export.ts"
   },
   "prisma": {

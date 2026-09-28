@@ -37,4 +37,4 @@ npm run db:generate:local
 
 The importer preserves IDs, dates, and relations. It cancels before writing if any destination table already contains records. Do not run the import after users have started entering production data.
 
-To create a fresh export later, run `npm run db:export:sqlite -- "<path outside the repository>"` while local Prisma is generated for SQLite. The exporter never overwrites an existing file.
+To create a fresh export later, run `npm run db:export:sqlite -- "<path outside the repository>"` while local Prisma is generated for SQLite. The exporter never overwrites an existing file. If you previously generated the PostgreSQL client, stop the dev server and run `npm run db:generate:local` before exporting.
