@@ -147,8 +147,8 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
             ))}
           </div>
         </div>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-          <table className="min-w-full text-left text-sm">
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
+          <table className="min-w-[760px] text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-4 py-3 font-medium">Item</th>

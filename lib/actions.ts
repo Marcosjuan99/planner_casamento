@@ -89,6 +89,65 @@ export async function createResponsible(formData: FormData) {
   revalidatePath("/responsibles");
 }
 
+export async function saveWeddingDate(formData: FormData) {
+  const weddingDate = toDate(formData.get("weddingDate"));
+  if (!weddingDate) return;
+
+  await prisma.weddingSettings.upsert({
+    where: { id: "main" },
+    update: { weddingDate },
+    create: { id: "main", weddingDate },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/calendar");
+}
+
+export async function createCalendarEvent(formData: FormData) {
+  const title = String(formData.get("title") || "").trim();
+  const date = toDate(formData.get("date"));
+  if (!title || !date) return;
+
+  await prisma.calendarEvent.create({
+    data: {
+      title,
+      date,
+      notes: String(formData.get("notes") || "").trim() || null,
+    },
+  });
+
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+  redirect(`/calendar?month=${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`);
+}
+
+export async function deleteCalendarEvent(id: string) {
+  if (!id) return;
+
+  await prisma.calendarEvent.deleteMany({ where: { id } });
+  revalidatePath("/calendar");
+  revalidatePath("/dashboard");
+}
+
+export async function updateResponsible(formData: FormData) {
+  const id = String(formData.get("id") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!id || !name) return;
+
+  await prisma.responsible.update({
+    where: { id },
+    data: {
+      name,
+      type: String(formData.get("type") || "Outro"),
+      description: String(formData.get("description") || "") || null,
+    },
+  });
+
+  revalidatePath("/responsibles");
+  revalidatePath("/items");
+  revalidatePath("/dashboard");
+}
+
 export async function createSupplier(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   if (!name) return;
@@ -291,6 +350,26 @@ export async function updateItem(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/reports");
   redirect("/items");
+}
+
+export async function markItemCompleted(id: string) {
+  if (!id) return;
+
+  await prisma.item.updateMany({ where: { id }, data: { status: "Concluído" } });
+  revalidatePath("/items");
+  revalidatePath(`/items/${id}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+}
+
+export async function reopenItem(id: string) {
+  if (!id) return;
+
+  await prisma.item.updateMany({ where: { id, status: "Concluído" }, data: { status: "Planejando" } });
+  revalidatePath("/items");
+  revalidatePath(`/items/${id}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
 }
 
 export async function updateItemEstimatedValue(formData: FormData) {

@@ -25,9 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} h-full bg-slate-50 antialiased`}
     >
       <body className="min-h-full bg-slate-50 text-slate-900">
-        <div className="mx-auto flex max-w-[1600px] gap-6 p-4 md:p-6">
+        <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-3 p-3 sm:p-4 md:flex-row md:gap-6 md:p-6">
           <Sidebar />
-          <main className="min-w-0 flex-1 rounded-3xl p-2 md:p-4">{children}</main>
+          <main className="min-w-0 flex-1 p-0 sm:p-2 md:rounded-3xl md:p-4">{children}</main>
         </div>
       </body>
     </html>

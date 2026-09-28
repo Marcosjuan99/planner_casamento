@@ -28,7 +28,7 @@ export function StatusBadge({ status }: { status: string }) {
     Contratado: "bg-emerald-100 text-emerald-700",
     "Parcialmente pago": "bg-amber-100 text-amber-700",
     Pago: "bg-emerald-100 text-emerald-700",
-    Concluído: "bg-rose-100 text-rose-700",
+    Concluído: "bg-emerald-100 text-emerald-700",
     Cancelado: "bg-red-100 text-red-700",
     Pendente: "bg-amber-100 text-amber-800",
     Atrasado: "bg-red-100 text-red-700",

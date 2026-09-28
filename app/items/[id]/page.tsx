@@ -33,7 +33,7 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-rose-500">Detalhes</p>
           <h1 className="mt-2 text-3xl font-semibold text-slate-900">{item.name}</h1>
@@ -63,9 +63,9 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
             <h2 className="text-xl font-semibold text-slate-900">Parcelas</h2>
             <div className="mt-4 space-y-2">
               {item.installments.length ? item.installments.map((installment) => (
-                <div key={installment.id} className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm">
-                  <span>{installment.number}</span>
-                  <form action={updateInstallmentStatus}>
+                <div key={installment.id} className="flex flex-col items-start gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <span>Parcela {installment.number}</span>
+                  <form action={updateInstallmentStatus} className="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="id" value={installment.id} />
                     <select name="status" defaultValue={installment.status} className="rounded-xl border border-slate-200 bg-white px-2 py-1 text-xs" aria-label={`Status da parcela ${installment.number}`}>
                       {['Pendente', 'Pago', 'Atrasado', 'Cancelado'].map((status) => (
@@ -151,7 +151,7 @@ export default async function ItemDetailsPage({ params }: { params: Promise<{ id
 
                 return (
                   <div key={material.id} className="rounded-2xl bg-slate-50 px-3 py-2 text-sm">
-                    <div className="flex items-center justify-between gap-3"><span>{material.name}</span><strong>{money(material.actualValue || material.estimatedValue)}</strong></div>
+                    <div className="flex flex-wrap items-center justify-between gap-2"><span className="break-words">{material.name}</span><strong>{money(material.actualValue || material.estimatedValue)}</strong></div>
                     <div className="mt-1 text-slate-500">{material.status}</div>
                     {materialExcess > 0 ? (
                       <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">

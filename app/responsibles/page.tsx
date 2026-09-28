@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/db";
-import { createResponsible, deleteResponsible } from "@/lib/actions";
+import { createResponsible, deleteResponsible, updateResponsible } from "@/lib/actions";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 
 export default async function ResponsiblesPage() {
@@ -40,7 +40,13 @@ export default async function ResponsiblesPage() {
               </div>
               <ConfirmDeleteButton action={deleteResponsible.bind(null, responsible.id)} itemName={`o responsável “${responsible.name}”`} />
             </div>
-            <p className="mt-3 text-sm text-slate-600">{responsible.description ?? "Sem descrição"}</p>
+            <form action={updateResponsible} className="mt-4 space-y-3">
+              <input type="hidden" name="id" value={responsible.id} />
+              <input name="name" defaultValue={responsible.name} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" required aria-label="Nome do responsável" />
+              <input name="type" defaultValue={responsible.type} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="Tipo" aria-label="Tipo do responsável" />
+              <textarea name="description" defaultValue={responsible.description ?? ""} rows={2} className="w-full rounded-2xl border border-slate-200 px-3 py-2.5" placeholder="Descrição" aria-label="Descrição do responsável" />
+              <button type="submit" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">Salvar alterações</button>
+            </form>
           </div>
         ))}
       </div>

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { deleteItem } from "@/lib/actions";
+import { deleteItem, markItemCompleted, reopenItem } from "@/lib/actions";
 import { getDashboardData } from "@/lib/queries";
 import { StatusBadge, PriorityBadge } from "@/components/ui";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
@@ -20,8 +20,8 @@ export default async function ItemsPage() {
         <Link href="/items/new" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">+ Novo item</Link>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-left">
+      <div className="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full min-w-[760px] divide-y divide-slate-200 text-left">
           <thead className="bg-slate-50 text-sm text-slate-600">
             <tr>
               <th className="px-4 py-3 font-medium">Item</th>
@@ -44,6 +44,15 @@ export default async function ItemsPage() {
                 <td className="px-4 py-3 text-slate-600">{item.responsibleConnections[0]?.responsible.name ?? "Sem responsável"}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-right">
                   <div className="inline-flex items-center justify-end gap-2">
+                    {item.status === "Concluído" ? (
+                      <form action={reopenItem.bind(null, item.id)}>
+                        <button type="submit" className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100">Reabrir</button>
+                      </form>
+                    ) : (
+                      <form action={markItemCompleted.bind(null, item.id)}>
+                        <button type="submit" className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">Concluir</button>
+                      </form>
+                    )}
                     <Link href={`/items/${item.id}/edit`} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">Editar</Link>
                     <ConfirmDeleteButton action={deleteItem.bind(null, item.id)} itemName={`o item “${item.name}”`} />
                   </div>
