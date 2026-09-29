@@ -2,6 +2,9 @@
   "name": "planner-casamento",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "prisma generate --schema=prisma/schema.prisma && next dev",
     "build": "prisma generate --schema=prisma/schema.vercel.prisma && prisma migrate deploy --schema=prisma/schema.vercel.prisma && next build",

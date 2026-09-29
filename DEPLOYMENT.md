@@ -1,40 +1,47 @@
-# Vercel deployment
+# Deploy on Vercel
 
-## GitHub connection
+## Git and GitHub
 
-1. In Vercel, choose **Add New Project** and import `benditocasamento/Planner-casamento` from GitHub.
-2. If the repository is not listed, connect the GitHub account and grant Vercel access to this repository.
-3. Keep the project root at the repository root and use the default Next.js build command (`npm run build`).
+The repository remote is `https://github.com/benditocasamento/Planner-casamento.git`, and the current deployment branch is `main`. Git commit identity is configured locally for this clone. To push commits, authenticate with GitHub using your usual HTTPS credential manager or SSH key; never put a token in this repository.
 
-Vercel installs dependencies and redeploys when commits are pushed to the connected branch. No Vercel package is required inside this Next.js app.
+```bash
+git status
+git add .
+git commit -m "Describe the change"
+git push origin main
+```
 
-## Neon configuration
+In Vercel, import `benditocasamento/Planner-casamento` from GitHub, keep the project root at the repository root, and use the detected Next.js settings. The build command is `npm run build`; Vercel installs from `package-lock.json`. Node.js 20.9 or newer is required.
 
-The local SQLite file is not persistent storage on Vercel. Create a Neon PostgreSQL database (the Vercel Marketplace integration is supported) and add these project environment variables in Vercel before the first deployment:
+## Production database
 
-- `DATABASE_URL`: pooled Neon connection URL for application queries.
-- `DIRECT_URL`: unpooled/direct Neon connection URL for Prisma migrations.
+Vercel's filesystem is not persistent, so do not use the local SQLite database in production. Create a PostgreSQL database (Neon is supported) and set these environment variables in Vercel for Production before the first deployment. Configure Preview with a separate staging database so preview builds cannot apply migrations to production:
 
-Set both variables for Production and Preview. Do not commit real connection URLs. `.env.example` contains placeholders only.
+- `DATABASE_URL`: pooled PostgreSQL connection URL for application queries.
+- `DIRECT_URL`: direct, unpooled PostgreSQL connection URL for Prisma migrations.
 
-The production build generates the PostgreSQL Prisma Client, applies `prisma/migrations`, then builds Next.js. Local development continues using the original SQLite schema and `prisma/dev.db`.
+Use the provider's exact connection strings. Keep secrets out of `.env.example`, Git, and commits. The production build generates the PostgreSQL Prisma Client, applies committed migrations in `prisma/migrations`, and builds Next.js. A missing/invalid database URL or an unreachable database will fail the build; local development continues using SQLite via `.env`.
 
-## Import local records
+## Local data
 
-The safety export created for this setup is at:
+The local database is `prisma/dev.db` and is ignored by Git. To transfer local data to a new, empty PostgreSQL database, first export it while the local Prisma Client is generated:
 
-`%TEMP%\planner-casamento-sqlite-1790638956601.json`
+```bash
+npm run db:generate:local
+npm run db:export:sqlite -- "$HOME/planner-casamento-backup.json"
+```
 
-Stop the local dev server before switching Prisma Client generation. In PowerShell, set the Neon connection URLs in the current terminal, then import into the migrated, empty Neon database:
+Then stop the dev server, set `DATABASE_URL` and `DIRECT_URL` to the production database in the current shell, and run:
 
-```powershell
-$env:DATABASE_URL = "<pooled Neon URL>"
-$env:DIRECT_URL = "<direct Neon URL>"
-npm run db:import:sqlite -- "$env:TEMP\planner-casamento-sqlite-1790638956601.json"
-Remove-Item Env:DATABASE_URL,Env:DIRECT_URL
+```bash
+npm run db:generate:vercel
+npx prisma migrate deploy --schema=prisma/schema.vercel.prisma
+npm run db:import:sqlite -- "$HOME/planner-casamento-backup.json"
 npm run db:generate:local
 ```
 
-The importer preserves IDs, dates, and relations. It cancels before writing if any destination table already contains records. Do not run the import after users have started entering production data.
+The importer cancels if destination tables already contain data. Do not import over a database with production records. Restore local environment variables and regenerate the SQLite client before resuming local development.
 
-To create a fresh export later, run `npm run db:export:sqlite -- "<path outside the repository>"` while local Prisma is generated for SQLite. The exporter never overwrites an existing file. If you previously generated the PostgreSQL client, stop the dev server and run `npm run db:generate:local` before exporting.
+## Access protection
+
+This app currently has no sign-in or user authorization. A public Vercel deployment exposes planner data to anyone who can reach it. Enable Vercel Deployment Protection or add application authentication before storing private information.
