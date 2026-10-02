@@ -67,8 +67,9 @@ function isWithinPeriod(date: Date | null, startDate: Date, endDate: Date) {
 
 export function getDashboardStats(items: (Item & { payments: Payment[]; installments: Installment[]; materials: Material[]; tasks: Task[] })[], period: { startDate?: Date; endDate?: Date } = {}) {
   const totalEstimated = items.reduce((sum, item) => sum + getItemBudgetTotal(item), 0);
+  const giftsTotal = items.filter((item) => item.isGift).reduce((sum, item) => sum + item.estimatedValue, 0);
   const totalPaid = items.reduce((sum, item) => sum + getItemFinancialSummary(item).paidTotal, 0);
-  const totalRemaining = items.reduce((sum, item) => sum + getItemFinancialSummary(item).remaining, 0);
+  const totalRemaining = totalEstimated - giftsTotal;
   const hasPeriod = period.startDate && period.endDate;
   const totalCommitted = items.reduce((sum, item) => {
     if (item.isGift || item.status === "Cancelado") return sum;
@@ -88,7 +89,6 @@ export function getDashboardStats(items: (Item & { payments: Payment[]; installm
     }, 0);
     return sum + installmentCommitment + itemCommitment + materialsCommitment;
   }, 0);
-  const giftsTotal = items.filter((item) => item.isGift).reduce((sum, item) => sum + item.estimatedValue, 0);
   const materialsTotal = items.reduce((sum, item) => sum + item.materials.reduce((total, material) => total + (material.actualValue || material.estimatedValue), 0), 0);
   const completed = items.filter((item) => item.status === "Concluído").length;
   const pending = items.filter((item) => item.status !== "Concluído" && item.status !== "Cancelado").length;
